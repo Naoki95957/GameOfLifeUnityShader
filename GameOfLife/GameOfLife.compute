@@ -153,6 +153,4 @@ void GOL (uint3 id : SV_DispatchThreadID)
 	output = currentPixelColor * (test1 xor test2) or ((x xor copy) * color)
 	
 	*/
-
-	//Result[id.xy] = float4(id.x & id.y, (id.x & 15)/15.0, (id.y & 15)/15.0, 0.0);
 }
