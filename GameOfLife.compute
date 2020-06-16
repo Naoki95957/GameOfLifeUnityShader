@@ -1,0 +1,158 @@
+﻿//Game of life rules:
+/*
+
+1. Any live cell with fewer than two live neighbours dies, as if caused by underpopulation.
+2. Any live cell with two or three live neighbours lives on to the next generation.
+3. Any live cell with more than three live neighbours dies, as if by overpopulation.
+4. Any dead cell with exactly three live neighbours becomes a live cell, as if by reproduction.
+
+*/
+
+// Each #kernel tells which function to compile; you can have many kernels
+#pragma kernel GOL 
+
+// Create a RenderTexture with enableRandomWrite flag and set it
+// with cs.SetTexture
+RWTexture2D<float4> Output;
+RWTexture2D<float4> Input;
+float4 Color;
+float Width;
+float Height;
+
+[numthreads(32,32,1)]
+void GOL (uint3 id : SV_DispatchThreadID)
+{
+	// TODO: insert actual code here!
+
+	float2 position = float2((id.x) / Width, (id.y) / Height);
+	float2 pixelSize = float2(1.0 / Width, 1.0 / Height);
+
+	int runningTotal = 0;
+
+	//this will be a running total of pixels for a 3x3 grid
+	//these "runningTotal += ceil((temp.r + temp.g + temp.b) / 4.0);" lines add up the rgb values, divide them to be less than 1 and round up. 
+	//That way any rgb, besides (0,0,0), can be used
+
+	float4 temp = float4(0, 0, 0, 0);
+	float3 pos = id;
+
+	//upper
+	temp = Input[(pos.xy + float2(Width - 1, Height + 1)) % Width];//left
+	runningTotal += ceil((temp.r + temp.g + temp.b) / 4.0);
+
+	temp = Input[(pos.xy + float2(Width, Height + 1)) % Width];//center
+	runningTotal += ceil((temp.r + temp.g + temp.b) / 4.0);
+
+	temp = Input[(pos.xy + float2(Width + 1, Height + 1)) % Width];;//right
+	runningTotal += ceil((temp.r + temp.g + temp.b) / 4.0);
+
+
+	//mid
+	temp = Input[(pos.xy + float2(Width - 1, Height)) % Width];//left
+	runningTotal += ceil((temp.r + temp.g + temp.b) / 4.0);
+
+	//no center in count-up
+
+	temp = Input[(pos.xy + float2(Width + 1, Height)) % Width];;//right
+	runningTotal += ceil((temp.r + temp.g + temp.b) / 4.0);
+
+
+	//lower
+	temp = Input[(pos.xy + float2(Width - 1, Height - 1)) % Width];//left
+	runningTotal += ceil((temp.r + temp.g + temp.b) / 4.0);
+
+	temp = Input[(pos.xy + float2(Width, Height - 1)) % Width];//center
+	runningTotal += ceil((temp.r + temp.g + temp.b) / 4.0);
+
+	temp = Input[(pos.xy + float2(Width + 1, Height - 1)) % Width];//right
+	runningTotal += ceil((temp.r + temp.g + temp.b) / 4.0);
+
+
+	float4 currentPixel = Input[id.xy];//center DO NOT INCLUDE IN RUNNING TOTAL
+	int currentCell = ceil((currentPixel.r + currentPixel.g + currentPixel.b) / 4.0);
+
+	//rule 3
+	int test1 = 1 - floor((runningTotal + 5.0) / 9.0 + 0.01);
+	//rule 1
+	int test2 = 1 - floor((runningTotal + 7.0) / 9.0 + 0.01);
+	//combined make up rule 2
+	int result1 = test1 ^ test2;
+
+	//both are in part for rule 4, as to test exactly for 3 cells
+	int test3 = 1 - floor((runningTotal + 6.0) / 9.0 + 0.01);
+	int test4 = 1 - floor((runningTotal + 5.0) / 9.0 + 0.01);
+
+	int result2 = test3 ^ test4;
+	
+	//CurrentCell is either 1 = alive and times result 1 would remain alive.
+	//if times 0, would die
+	//if the cell is to be dead, then check result 2 for spawning a cell
+	int final = max((currentCell * result1), result2);
+
+	Output[id.xy] = float4(final * Color.r, final * Color.g, final * Color.b, Color.a);
+
+	//last pixel needs to send the texture from input testing to output
+	if (id.x == Width - 1 && id.y == Height - 1)
+	{
+		for (uint i = 0; i < Width; ++i)
+		{
+			for (uint j = 0; j < Height; ++j)
+			{
+				Input[uint2(i, j)] = Output[uint2(i, j)];
+			}
+		}
+	}
+
+	//alive == 2 < x < 4
+	//runningTotal == x;
+	//2 < x < 4;
+	//scenarios x = 0, 1, 2, 3, 4, 5, 6, 7, 8;
+	/*
+	test if x < 4
+
+	x / 9 = 0, 0.111, 0.222, 0.3333, 0.444, 0.555, 0.666, 0.777, 0.888;
+	x = floor(x + 5.0 / 9.0 + 0.01)//0.01 for inaccuracy
+	this means  x = 0, 0, 0, 0, 1, 1, 1, 1, 1;
+	x = 1 - x; //this flips everything from 0 to 1 and 1 to 0;
+
+	RESULT:
+	input  = 0, 1, 2, 3, 4, 5, 6, 7, 8;
+	output = 1, 1, 1, 1, 0, 0, 0, 0, 0;
+	
+	test if x < 2
+
+	x / 9 = 0, 0.111, 0.222, 0.3333, 0.444, 0.555, 0.666, 0.777, 0.888;
+	x = 1 - floor((copyx + 7.0) / 9.0 + 0.01) = 1, 1, 0, 0, 0, 0, 0, 0, 0;
+
+	RESULT:
+	input  = 0, 1, 2, 3, 4, 5, 6, 7, 8;
+	output = 1, 1, 0, 0, 0, 0, 0, 0, 0;
+
+	test1 xor test2 = 0, 0, 1, 1, 0, 0, 0, 0, 0;//stays alive
+
+	if x == 3;
+	same strategy is being used:
+	x = 1 - floor((x + 5.0) / 9.0 + 0.01);
+	copy = 1 - floor((copy + 6.0) / 9.0 + 0.01)
+
+	(x xor copy) will result 1 only when x & copy were 3;
+
+	RESULT:
+	x:
+	input  = 0, 1, 2, 3, 4, 5, 6, 7, 8;
+	output = 1, 1, 1, 1, 0, 0, 0, 0, 0;
+
+	copy:
+	input  = 0, 1, 2, 3, 4, 5, 6, 7, 8;
+	output = 1, 1, 1, 0, 0, 0, 0, 0, 0;
+
+	x ^ copy:
+	input  = 0, 1, 2, 3, 4, 5, 6, 7, 8;
+	output = 0, 0, 0, 1, 0, 0, 0, 0, 0;
+
+	output = currentPixelColor * (test1 xor test2) or ((x xor copy) * color)
+	
+	*/
+
+	//Result[id.xy] = float4(id.x & id.y, (id.x & 15)/15.0, (id.y & 15)/15.0, 0.0);
+}
