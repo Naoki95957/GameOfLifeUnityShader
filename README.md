@@ -3,3 +3,6 @@ This is just a little repo to dump an old project that I never really continued 
 
 ### Unity version 
 Should be kind of updated. It should be easy to update to whatever version you want to use, but currently it is targeting 2019.3.0a11  
+
+### How to use
+There is an example script, object, and compute shader written. All you need to do in order to see the scene is really load the provided unity scene: 'MyScene.unity'
