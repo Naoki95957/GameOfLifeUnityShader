@@ -8,3 +8,4 @@ Should be kind of updated. It should be easy to update to whatever version you w
 There is an example script, object, and compute shader written. All you need to do in order to see the scene is really load the provided unity scene: 'MyScene.unity'
 
 From there you can select the 'Quad' prefab in the scene and drop an input texture in the 'init Tex' field. Just remember to set the correct pixel width/height per texture
+![image example](https://github.com/Naoki95957/GameOfLifeUnityShader/blob/master/script.PNG)
