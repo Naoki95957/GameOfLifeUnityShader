@@ -6,3 +6,4 @@ Should be kind of updated. It should be easy to update to whatever version you w
 
 ### How to use
 There is an example script, object, and compute shader written. All you need to do in order to see the scene is really load the provided unity scene: 'MyScene.unity'
+From there you can select the 'Quad' prefab in the scene and drop an input texture in the 'init Tex' field. Just remember to set the correct pixel width/height per texture
